@@ -4,11 +4,7 @@ name: Build MEQAT APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    paths:
-      - MEQAT-ANDROID-CLOUD.zip
-      - .github/workflows/build.yml
+    branches: [main]
 
 permissions:
   contents: read
@@ -18,37 +14,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download project
+      - name: تحميل المشروع
         uses: actions/checkout@v4
 
-      - name: Extract project
-        run: |
-          unzip -q MEQAT-ANDROID-CLOUD.zip -d extracted
-          test -f extracted/MEQAT-ANDROID/app/build.gradle.kts
-
-      - name: Install Java
+      - name: تجهيز Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
+      - name: تجهيز Android SDK
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Install Gradle
+      - name: فك ملفات المشروع
+        run: |
+          unzip -q MEQAT-ANDROID-CLOUD.zip -d extracted
+          test -f extracted/MEQAT-ANDROID/app/build.gradle.kts
+
+      - name: تجهيز Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Build APK
+      - name: إنشاء APK
         working-directory: extracted/MEQAT-ANDROID
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload APK
+      - name: حفظ ملف APK
         uses: actions/upload-artifact@v4
         with:
           name: MEQAT-APK
